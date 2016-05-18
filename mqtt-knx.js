@@ -7,7 +7,42 @@ if (typeof process.env.DEBUG != 'undefined' && process.env.DEBUG == 'true') {
 
 var eibd = require('eibd');
 var mqtt = require('mqtt');
+var parser = require('xml2js').parseString;
 var yaml_config = require('node-yaml-config');
+
+var nameL2;
+var nameL3;
+var groupAddresses = [];
+
+var fs = require('fs')
+fs.readFile('./groupaddresses.xml', 'utf8', function (err,data) {
+    if (err) {
+        return console.log(err);
+    }
+    parser(data, function (err, result) {
+        var L1 = result["GroupAddress-Export"].GroupRange;
+        L1.forEach(function (L2) {
+            if (typeof L2 == 'undefined') return;
+            nameL2 = L2['$'].Name;
+            L2.GroupRange.forEach(function (L3) {
+                if (typeof L3.GroupAddress == 'undefined') return;
+                nameL3 = L3['$'].Name;
+                L3.GroupAddress.forEach(function (item) {
+                    groupAddresses.push({'ga' : item['$'].Address, 'name' : item['$'].Name, 'name-level2' : nameL2, 'name-level3' : nameL3});
+                });
+            });
+        });
+    });
+});
+
+var gaLookup = function(ga) {
+    return groupAddresses.filter(
+        function (element, index) {
+            if (element.ga != ga) return false;
+            return true; 
+        }
+    ).pop();
+};
 
 var config = yaml_config.load(__dirname + '/config.yml');
 var host = config.eibdHost;
@@ -16,10 +51,9 @@ var mqttClient = mqtt.connect(config.mqttHost);
 
 var eibdConn = eibd.Connection();
 var eibdOpts = { host: config.eibdHost, port: config.eibdPort };
-var topic = 'knx';
 
 function groupWrite(gad, messageAction, DPTType, value) {
-    console.log('groupWrite', gad, messageAction, DPTType, value);
+    if (DEBUG) console.log('groupWrite', gad, messageAction, DPTType, value);
     var address = eibd.str2addr(gad);
 
     eibdConn.socketRemote(eibdOpts, function () {
@@ -34,13 +68,13 @@ function groupWrite(gad, messageAction, DPTType, value) {
     });
 }
 
-mqttClient.subscribe('/actor/' + topic + '/+/+/+');
+mqttClient.subscribe('/actor/knx/+/+/+');
 
 mqttClient.on('message', function (topic, message) {
     var gad = topic.substr(topic.length + 1, topic.length - topic.length - 5);
     var gad = topic.split("/").slice(-4, -1).join('/');
     var value = message.toString();
-    console.log('mqttClient.on', gad, value);
+    if (DEBUG) console.log('mqttClient.on', gad, value);
     if (value === 'true') {
         groupWrite(gad, 'write', 'DPT3', '1');
     }
@@ -55,10 +89,16 @@ mqttClient.on('message', function (topic, message) {
 eibdConn.socketRemote(eibdOpts, function () {
     eibdConn.openGroupSocket(0, function (parser) {
         parser.on('write', function (src, dest, type, val) {
-            var message = getDPTValue(val, type);
-            if (message) {
-                console.log('/sensor/' + topic + '/' + dest, message);
-                mqttClient.publish('/sensor/' + topic + '/' + dest, message, { retain: true });
+            var value = getDPTValue(val, type);
+            if (value) {
+console.log(value, dest);
+                var topic = '/sensor/knx/' + dest
+                var message = gaLookup(dest);
+                if (typeof message == 'undefined') return;
+                message.value = value;
+                message = JSON.stringify(message);
+                if (DEBUG) console.log(topic, message);
+                mqttClient.publish(topic, message, { retain: true });
             }
         });
     });
