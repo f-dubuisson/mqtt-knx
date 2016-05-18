@@ -5,10 +5,8 @@ var mqtt = require('mqtt');
 var yaml_config = require('node-yaml-config');
 
 var config = yaml_config.load(__dirname + '/config.yml');
-
 var host = config.eibdHost;
 var port = config.eibdPort;
-
 var mqttClient = mqtt.connect(config.mqttHost);
 
 var eibdConn = eibd.Connection();
@@ -18,6 +16,7 @@ var topic = 'knx';
 function groupWrite(gad, messageAction, DPTType, value) {
     console.log('groupWrite', gad, messageAction, DPTType, value);
     var address = eibd.str2addr(gad);
+
     eibdConn.socketRemote(eibdOpts, function () {
         eibdConn.openTGroup(address, 1, function (err) {
             var msg = eibd.createMessage(messageAction, DPTType, parseInt(value));
@@ -30,10 +29,11 @@ function groupWrite(gad, messageAction, DPTType, value) {
     });
 }
 
-mqttClient.subscribe(topic + '/+/+/+/set');
+mqttClient.subscribe('/actor/' + topic + '/+/+/+');
 
 mqttClient.on('message', function (topic, message) {
     var gad = topic.substr(topic.length + 1, topic.length - topic.length - 5);
+    var gad = topic.split("/").slice(-4, -1).join('/');
     var value = message.toString();
     console.log('mqttClient.on', gad, value);
     if (value === 'true') {
@@ -52,8 +52,8 @@ eibdConn.socketRemote(eibdOpts, function () {
         parser.on('write', function (src, dest, type, val) {
             var message = getDPTValue(val, type);
             if (message) {
-                console.log(topic + '/' + dest, message);
-                mqttClient.publish(topic + '/' + dest, message, { retain: true });
+                console.log('/sensor/' + topic + '/' + dest, message);
+                mqttClient.publish('/sensor/' + topic + '/' + dest, message, { retain: true });
             }
         });
     });
