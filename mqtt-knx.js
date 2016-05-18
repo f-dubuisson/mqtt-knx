@@ -1,5 +1,10 @@
 #!/usr/bin/env node
 
+var DEBUG = false;
+if (typeof process.env.DEBUG != 'undefined' && process.env.DEBUG == 'true') { 
+    DEBUG = true;
+}
+
 var eibd = require('eibd');
 var mqtt = require('mqtt');
 var yaml_config = require('node-yaml-config');
