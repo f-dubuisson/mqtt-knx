@@ -1,0 +1,4 @@
+default:
+  mqttHost: "mqtt://1.2.3.4"
+  eibdHost: "1.2.3.5"
+  eibdPort: 6720
