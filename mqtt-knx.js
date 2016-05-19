@@ -1,8 +1,11 @@
 #!/usr/bin/env node
 
+console.log('Starting mqtt-knx');
+
 var DEBUG = false;
 if (typeof process.env.DEBUG != 'undefined' && process.env.DEBUG == 'true') { 
     DEBUG = true;
+    console.log('Debug mode enabled');
 }
 
 var eibd = require('eibd');
@@ -15,10 +18,12 @@ var nameL3;
 var groupAddresses = [];
 
 var fs = require('fs')
-fs.readFile('./groupaddresses.xml', 'utf8', function (err,data) {
+console.log('Loading group addresses');
+fs.readFile(__dirname + '/groupaddresses.xml', 'utf8', function (err,data) {
     if (err) {
         return console.log(err);
     }
+    console.log('parsing xml data');
     parser(data, function (err, result) {
         var L1 = result["GroupAddress-Export"].GroupRange;
         L1.forEach(function (L2) {
@@ -44,13 +49,19 @@ var gaLookup = function(ga) {
     ).pop();
 };
 
+
+console.log('loading config');
 var config = yaml_config.load(__dirname + '/config.yml');
 var host = config.eibdHost;
 var port = config.eibdPort;
+
+console.log('connecting to mqtt')
 var mqttClient = mqtt.connect(config.mqttHost);
 
+console.log('connecting to eibd');
 var eibdConn = eibd.Connection();
 var eibdOpts = { host: config.eibdHost, port: config.eibdPort };
+console.log('bootstrap done');
 
 function groupWrite(gad, messageAction, DPTType, value) {
     if (DEBUG) console.log('groupWrite', gad, messageAction, DPTType, value);
