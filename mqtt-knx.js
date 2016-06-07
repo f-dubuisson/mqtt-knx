@@ -82,14 +82,14 @@ function groupWrite(gad, messageAction, DPTType, value) {
 mqttClient.subscribe('/actor/knx/+/+/+');
 
 mqttClient.on('message', function (topic, message) {
-    var gad = topic.substr(topic.length + 1, topic.length - topic.length - 5);
-    var gad = topic.split("/").slice(-4, -1).join('/');
+    var gad = topic.split("/").slice(-3).join('/');
+
     var value = message.toString();
     if (DEBUG) console.log('mqttClient.on', gad, value);
-    if (value === 'true') {
+    if (value === 'true' || value === 'ON' || value === 'on') {
         groupWrite(gad, 'write', 'DPT3', '1');
     }
-    else if (value === 'false') {
+    else if (value === 'false' || value === 'OFF' || value === 'off') {
         groupWrite(gad, 'write', 'DPT3', '0');
     }
     else {
