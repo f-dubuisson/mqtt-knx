@@ -33,7 +33,7 @@ fs.readFile(__dirname + '/groupaddresses.xml', 'utf8', function (err,data) {
                 if (typeof L3.GroupAddress == 'undefined') return;
                 nameL3 = L3['$'].Name;
                 L3.GroupAddress.forEach(function (item) {
-                    groupAddresses.push({'ga' : item['$'].Address, 'name' : item['$'].Name, 'name-level2' : nameL2, 'name-level3' : nameL3});
+                    groupAddresses.push({'ga' : item['$'].Address, 'name' : item['$'].Name, 'device' : nameL2, 'type' : nameL3});
                 });
             });
         });
@@ -45,6 +45,15 @@ var gaLookup = function(ga) {
         function (element, index) {
             if (element.ga != ga) return false;
             return true; 
+        }
+    ).pop();
+};
+
+var gaLookupByName = function(name) {
+    return groupAddresses.filter(
+        function (element, index) {
+            if (element.name != name) return false;
+            return true;
         }
     ).pop();
 };
@@ -64,33 +73,53 @@ var eibdOpts = { host: config.eibdHost, port: config.eibdPort };
 console.log('bootstrap done');
 
 function groupWrite(gad, messageAction, DPTType, value) {
-    if (DEBUG) console.log('groupWrite', gad, messageAction, DPTType, value);
+    if (DPTType != 'DPT3.007') {
+        value = parseInt(value);
+    }
+    else {
+        value = parseInt(value, 16);
+    }
+    //if (DEBUG) 
+        console.log('groupWrite', gad, messageAction, DPTType, value);
     var address = eibd.str2addr(gad);
 
     eibdConn.socketRemote(eibdOpts, function () {
         eibdConn.openTGroup(address, 1, function (err) {
-            var msg = eibd.createMessage(messageAction, DPTType, parseInt(value));
+            var msg = eibd.createMessage(messageAction, DPTType, value);
             eibdConn.sendAPDU(msg, function (err) {
                 if (err) {
-                    console.error(err);
+                    console.error('Error:', err);
                 }
             });
         });
     });
 }
 
-mqttClient.subscribe('/actor/knx/+/+/+');
+mqttClient.subscribe('/knx/actor/+/+/+/+');
+mqttClient.subscribe('/knx/actor/+/+');
 
 mqttClient.on('message', function (topic, message) {
-    var gad = topic.split("/").slice(-3).join('/');
+    var c = topic.split('/').length;
+    if (c == 7) {
+        var gad = topic.split("/").slice(-3).join('/'); 
+    }
+    else if (c == 5) {
+        gad = gaLookupByName(topic.split("/").slice(-1)[0]).ga;
+    }
 
     var value = message.toString();
     if (DEBUG) console.log('mqttClient.on', gad, value);
-    if (value === 'true' || value === 'ON' || value === 'on') {
+    if (value === 'true' || value === 'ON' || value === 'on' || value === 'DOWN' || value === 'down') {
         groupWrite(gad, 'write', 'DPT3', '1');
     }
-    else if (value === 'false' || value === 'OFF' || value === 'off') {
+    else if (value === 'false' || value === 'OFF' || value === 'off' || value === 'UP' || value == 'up') {
         groupWrite(gad, 'write', 'DPT3', '0');
+    }
+    else if (value === '+') {
+        groupWrite(gad, 'write', 'DPT3.007', '0C');
+    }
+    else if (value === '-') {
+        groupWrite(gad, 'write', 'DPT3.007', '04');
     }
     else {
         groupWrite(gad, 'write', 'DPT5', value);
@@ -102,7 +131,6 @@ eibdConn.socketRemote(eibdOpts, function () {
         parser.on('write', function (src, dest, type, val) {
             var value = getDPTValue(val, type);
             if (value) {
-console.log(value, dest);
                 var topic = '/sensor/knx/' + dest
                 var message = gaLookup(dest);
                 if (typeof message == 'undefined') return;
@@ -124,6 +152,8 @@ function getDPTValue(val, type) {
                 return 'true';
             }
             break;
+        case 'DPT3.007':
+           return val;
         case 'DPT5':
             return (val * 100 / 255).toFixed(1) + '%';
         case 'DPT9':
