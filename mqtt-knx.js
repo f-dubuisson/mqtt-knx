@@ -131,7 +131,7 @@ eibdConn.socketRemote(eibdOpts, function () {
         parser.on('write', function (src, dest, type, val) {
             var value = getDPTValue(val, type);
             if (value) {
-                var topic = '/sensor/knx/' + dest
+                var topic = '/knx/sensor/' + dest
                 var message = gaLookup(dest);
                 if (typeof message == 'undefined') return;
                 message.value = value;
