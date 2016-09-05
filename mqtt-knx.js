@@ -2,7 +2,7 @@
 
 console.log('Starting mqtt-knx');
 
-var DEBUG = false;
+var DEBUG = true;
 if (typeof process.env.DEBUG != 'undefined' && process.env.DEBUG == 'true') { 
     DEBUG = true;
     console.log('Debug mode enabled');
@@ -25,6 +25,7 @@ fs.readFile(__dirname + '/groupaddresses.xml', 'utf8', function (err,data) {
     }
     console.log('parsing xml data');
     parser(data, function (err, result) {
+        console.log(result);
         var L1 = result["GroupAddress-Export"].GroupRange;
         L1.forEach(function (L2) {
             if (typeof L2 == 'undefined') return;
@@ -73,7 +74,7 @@ var eibdOpts = { host: config.eibdHost, port: config.eibdPort };
 console.log('bootstrap done');
 
 function groupWrite(gad, messageAction, DPTType, value) {
-    if (DPTType != 'DPT3.007') {
+    if (DPTType != 'DPT3.007' && DPTType != 'DPT5.001' ) {
         value = parseInt(value);
     }
     else {
@@ -121,14 +122,20 @@ mqttClient.on('message', function (topic, message) {
     else if (value === '-') {
         groupWrite(gad, 'write', 'DPT3.007', '04');
     }
+    else if (value.slice(-1) == '%') {
+        value = value.substr(0, value.length-1);
+        hexString = Math.round(+value * 2.55).toString(16).toUpperCase();
+        groupWrite(gad, 'write', 'DPT5.001', hexString);
+    }
     else {
         groupWrite(gad, 'write', 'DPT5', value);
     }
 });
 
 eibdConn.socketRemote(eibdOpts, function () {
-    eibdConn.openGroupSocket(0, function (parser) {
-        parser.on('write', function (src, dest, type, val) {
+//     console.log(parser);
+    eibdConn.openGroupSocket(0, function (messageparser) {
+        messageparser.on('write', function (src, dest, type, val) {
             var value = getDPTValue(val, type);
             if (value) {
                 var topic = '/knx/sensor/' + dest
@@ -162,4 +169,3 @@ function getDPTValue(val, type) {
             return undefined;
     }
 }
-
