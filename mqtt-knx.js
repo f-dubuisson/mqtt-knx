@@ -25,7 +25,6 @@ fs.readFile(__dirname + '/groupaddresses.xml', 'utf8', function (err,data) {
     }
     console.log('parsing xml data');
     parser(data, function (err, result) {
-        console.log(result);
         var L1 = result["GroupAddress-Export"].GroupRange;
         L1.forEach(function (L2) {
             if (typeof L2 == 'undefined') return;
