@@ -73,13 +73,14 @@ var eibdOpts = { host: config.eibdHost, port: config.eibdPort };
 console.log('bootstrap done');
 
 function groupWrite(gad, messageAction, DPTType, value) {
-    if (DPTType != 'DPT3.007' && DPTType != 'DPT5.001' ) {
+    if (DPTType == 'DPT10.001') {}
+    else if (DPTType != 'DPT3.007' && DPTType != 'DPT5.001' ) {
         value = parseInt(value);
     }
     else {
         value = parseInt(value, 16);
     }
-    //if (DEBUG) 
+    if (DEBUG) 
         console.log('groupWrite', gad, messageAction, DPTType, value);
     var address = eibd.str2addr(gad);
 
@@ -126,13 +127,16 @@ mqttClient.on('message', function (topic, message) {
         hexString = Math.round(+value * 2.55).toString(16).toUpperCase();
         groupWrite(gad, 'write', 'DPT5.001', hexString);
     }
+    else if (value.split(':').length == 3) {
+        v = value.split(':');
+        groupWrite(gad, 'write', 'DPT10.001', [0, v[0], v[1], v[2]]);
+    }
     else {
         groupWrite(gad, 'write', 'DPT5', value);
     }
 });
 
 eibdConn.socketRemote(eibdOpts, function () {
-//     console.log(parser);
     eibdConn.openGroupSocket(0, function (messageparser) {
         messageparser.on('write', function (src, dest, type, val) {
             var value = getDPTValue(val, type);
@@ -159,6 +163,7 @@ function getDPTValue(val, type) {
             }
             break;
         case 'DPT3.007':
+        case 'DPT10.001':
            return val;
         case 'DPT5':
             return (val * 100 / 255).toFixed(1) + '%';
