@@ -73,7 +73,7 @@ var eibdOpts = { host: config.eibdHost, port: config.eibdPort };
 console.log('bootstrap done');
 
 function groupWrite(gad, messageAction, DPTType, value) {
-    if (DPTType == 'DPT10.001') {}
+    if (DPTType == 'DPT10.001' || DPTType == 'DPT9') {}
     else if (DPTType != 'DPT3.007' && DPTType != 'DPT5.001' ) {
         value = parseInt(value);
     }
@@ -126,6 +126,9 @@ mqttClient.on('message', function (topic, message) {
         value = value.substr(0, value.length-1);
         hexString = Math.round(+value * 2.55).toString(16).toUpperCase();
         groupWrite(gad, 'write', 'DPT5.001', hexString);
+    }
+    else if (value.split('.').length == 2) {
+        groupWrite(gad, 'write', 'DPT9', value);
     }
     else if (value.split(':').length == 3) {
         v = value.split(':');
