@@ -105,7 +105,13 @@ mqttClient.on('message', function (topic, message) {
         var gad = topic.split("/").slice(-3).join('/'); 
     }
     else if (c == 5) {
-        gad = gaLookupByName(topic.split("/").slice(-1)[0]).ga;
+        try {
+            gad = gaLookupByName(topic.split("/").slice(-1)[0]).ga;
+        }
+        catch(err) {
+            console.log('Cannot find ga for [' + topic + '] in ga.xml', err);
+            return;
+        }
     }
 
     var value = message.toString();
@@ -144,11 +150,14 @@ eibdConn.socketRemote(eibdOpts, function () {
         messageparser.on('write', function (src, dest, type, val) {
             var value = getDPTValue(val, type);
             if (value) {
-                var topic = '/knx/sensor/' + dest
-                var message = gaLookup(dest);
-                if (typeof message == 'undefined') return;
-                message.value = value;
-                message = JSON.stringify(message);
+                var gaItem = gaLookup(dest);
+                if (typeof gaItem == 'undefined') return;
+                         
+                if (gaItem.device != 'sensor') return;
+                         
+                var topic = '/knx/sensor/' + gaItem.type + '/' + gaItem.name;
+                gaItem.value = value;
+                message = JSON.stringify(gaItem);
                 if (DEBUG) console.log(topic, message);
                 mqttClient.publish(topic, message, { retain: true });
             }
