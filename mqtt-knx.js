@@ -3,7 +3,7 @@
 console.log('Starting mqtt-knx');
 
 var DEBUG = true;
-if (typeof process.env.DEBUG != 'undefined' && process.env.DEBUG == 'true') { 
+if (typeof process.env.DEBUG != 'undefined' && process.env.DEBUG == 'true') {
     DEBUG = true;
     console.log('Debug mode enabled');
 }
@@ -44,7 +44,7 @@ var gaLookup = function(ga) {
     return groupAddresses.filter(
         function (element, index) {
             if (element.ga != ga) return false;
-            return true; 
+            return true;
         }
     ).pop();
 };
@@ -72,7 +72,28 @@ var eibdConn = eibd.Connection();
 var eibdOpts = { host: config.eibdHost, port: config.eibdPort };
 console.log('bootstrap done');
 
+var block = false;
+
 function groupWrite(gad, messageAction, DPTType, value) {
+
+  var synchronous = function() {
+	   setTimeout(
+  	    function(){
+  	       if (block){
+              synchronous();
+            }
+            else {
+              block = true;
+              groupWriteDo(gad, messageAction, DPTType, value);
+            }
+          },
+          50);
+        };
+  synchronous(gad);
+}
+
+function groupWriteDo(gad, messageAction, DPTType, value) {
+    block = true;
     if (DPTType == 'DPT10.001' || DPTType == 'DPT9') {}
     else if (DPTType != 'DPT3.007' && DPTType != 'DPT5.001' ) {
         value = parseInt(value);
@@ -80,7 +101,7 @@ function groupWrite(gad, messageAction, DPTType, value) {
     else {
         value = parseInt(value, 16);
     }
-    if (DEBUG) 
+    if (DEBUG)
         console.log('groupWrite', gad, messageAction, DPTType, value);
     var address = eibd.str2addr(gad);
 
@@ -88,6 +109,25 @@ function groupWrite(gad, messageAction, DPTType, value) {
         eibdConn.openTGroup(address, 1, function (err) {
             var msg = eibd.createMessage(messageAction, DPTType, value);
             eibdConn.sendAPDU(msg, function (err) {
+                block = false;
+                if (err) {
+                    console.error('Error:', err);
+                }
+            });
+        });
+    });
+}
+
+function groupRead(gad) {
+    if (DEBUG)
+        console.log('groupRead', gad);
+    var address = eibd.str2addr(gad);
+
+    eibdConn.socketRemote(eibdOpts, function () {
+        eibdConn.openTGroup(address, 1, function (err) {
+            var msg = eibd.createMessage('read');
+            eibdConn.sendAPDU(msg, function (err) {
+                block = false;
                 if (err) {
                     console.error('Error:', err);
                 }
@@ -102,7 +142,7 @@ mqttClient.subscribe('/knx/actor/+/+');
 mqttClient.on('message', function (topic, message) {
     var c = topic.split('/').length;
     if (c == 7) {
-        var gad = topic.split("/").slice(-3).join('/'); 
+        var gad = topic.split("/").slice(-3).join('/');
     }
     else if (c == 5) {
         try {
@@ -114,8 +154,10 @@ mqttClient.on('message', function (topic, message) {
         }
     }
 
+    if (DEBUG) console.log(topic, message, gad, value);
+
     var value = message.toString();
-    if (DEBUG) console.log('mqttClient.on', gad, value);
+    //if (DEBUG) console.log('mqttClient.on', gad, value);
     if (value === 'true' || value === 'ON' || value === 'on' || value === 'DOWN' || value === 'down') {
         groupWrite(gad, 'write', 'DPT3', '1');
     }
@@ -127,6 +169,9 @@ mqttClient.on('message', function (topic, message) {
     }
     else if (value === '-') {
         groupWrite(gad, 'write', 'DPT3.007', '04');
+    }
+    else if (value === 'read') {
+        groupRead(gad, 'read');
     }
     else if (value.slice(-1) == '%') {
         value = value.substr(0, value.length-1);
@@ -152,14 +197,14 @@ eibdConn.socketRemote(eibdOpts, function () {
             if (value) {
                 var gaItem = gaLookup(dest);
                 if (typeof gaItem == 'undefined') return;
-                         
+
                 if (gaItem.device != 'sensor') return;
-                         
+
                 var topic = '/knx/sensor/' + gaItem.type + '/' + gaItem.name;
                 gaItem.value = value;
                 message = JSON.stringify(gaItem);
                 if (DEBUG) console.log(topic, message);
-                mqttClient.publish(topic, message, { retain: true });
+                mqttClient.publish(topic, message, { "retain": false, "qos": 2 });
             }
         });
     });
