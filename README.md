@@ -6,7 +6,7 @@ KNX to MQTT Bridge.
 
     npm install
 
-    A config.yml file is required; see sample config.yml.dist.
+A config.yml file and groupaddresses.xml file are required. groupaddresses.xml file can be extracted by unzipping an ETS4 project file and searching for 0.xml in a folder.
 
 ##Usage
 
