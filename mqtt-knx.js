@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env nodejs
 
 console.log('Starting mqtt-knx');
 
@@ -25,7 +25,7 @@ fs.readFile(__dirname + '/groupaddresses.xml', 'utf8', function (err,data) {
     }
     console.log('parsing xml data');
     parser(data, function (err, result) {
-        var L1 = result["GroupAddress-Export"].GroupRange;
+        var L1 = result["KNX"]["Project"][0]["Installations"][0]["Installation"][0]["GroupAddresses"][0]["GroupRanges"][0]["GroupRange"];
         L1.forEach(function (L2) {
             if (typeof L2 == 'undefined') return;
             nameL2 = L2['$'].Name;
@@ -33,12 +33,23 @@ fs.readFile(__dirname + '/groupaddresses.xml', 'utf8', function (err,data) {
                 if (typeof L3.GroupAddress == 'undefined') return;
                 nameL3 = L3['$'].Name;
                 L3.GroupAddress.forEach(function (item) {
-                    groupAddresses.push({'ga' : item['$'].Address, 'name' : item['$'].Name, 'device' : nameL2, 'type' : nameL3});
+		    var gad = addressValueToGad(item['$'].Address);
+                    groupAddresses.push({'ga' : gad, 'name' : item['$'].Name, 'device' : nameL2, 'type' : nameL3});
+                    console.log("Adding item: ", item['$'].Name, gad);
                 });
             });
         });
     });
+    console.log('parsing done');
 });
+
+function addressValueToGad(value) {
+  var A = Math.floor(value / 2048);
+  var B = Math.floor((value % 2048) / 256);
+  var C = (value % 256);
+
+  return A + '/' + B + '/' + C;
+}
 
 var gaLookup = function(ga) {
     return groupAddresses.filter(
@@ -136,28 +147,20 @@ function groupRead(gad) {
     });
 }
 
-mqttClient.subscribe('/knx/actor/+/+/+/+');
-mqttClient.subscribe('/knx/actor/+/+');
+mqttClient.subscribe('/knx/+/+/+/set');
 
 mqttClient.on('message', function (topic, message) {
     var c = topic.split('/').length;
-    if (c == 7) {
-        var gad = topic.split("/").slice(-3).join('/');
+    try {
+        gad = gaLookupByName(topic.substring(0, topic.indexOf("/set")).split("/").slice(-1)[0]).ga;
     }
-    else if (c == 5) {
-        try {
-            gad = gaLookupByName(topic.split("/").slice(-1)[0]).ga;
-        }
-        catch(err) {
-            console.log('Cannot find ga for [' + topic + '] in ga.xml', err);
-            return;
-        }
+    catch(err) {
+        console.log('Cannot find ga for [' + topic + '] in ga.xml', err);
+        return;
     }
-
-    if (DEBUG) console.log(topic, message, gad, value);
 
     var value = message.toString();
-    //if (DEBUG) console.log('mqttClient.on', gad, value);
+    if (DEBUG) console.log('mqttClient.on', gad, value);
     if (value === 'true' || value === 'ON' || value === 'on' || value === 'DOWN' || value === 'down') {
         groupWrite(gad, 'write', 'DPT3', '1');
     }
@@ -193,17 +196,18 @@ mqttClient.on('message', function (topic, message) {
 eibdConn.socketRemote(eibdOpts, function () {
     eibdConn.openGroupSocket(0, function (messageparser) {
         messageparser.on('write', function (src, dest, type, val) {
+	    if (DEBUG) console.log("msg: ", src, dest, type, val);
             var value = getDPTValue(val, type);
             if (value) {
                 var gaItem = gaLookup(dest);
+//		if (DEBUG) console.log("gaItem: ", gaItem);
                 if (typeof gaItem == 'undefined') return;
 
-                if (gaItem.device != 'sensor') return;
-
-                var topic = '/knx/sensor/' + gaItem.type + '/' + gaItem.name;
+                var topic = '/knx/' + gaItem.device + '/' + gaItem.type + '/' + gaItem.name + '/get';
                 gaItem.value = value;
-                message = JSON.stringify(gaItem);
-                if (DEBUG) console.log(topic, message);
+//                message = JSON.stringify(gaItem);
+		message = value;
+                if (DEBUG) console.log("publish: ", topic, message);
                 mqttClient.publish(topic, message, { "retain": false, "qos": 2 });
             }
         });
