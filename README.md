@@ -4,27 +4,19 @@ KNX to MQTT Bridge.
 
 ##Install
 
-Prepare eibd und mosquitto
-
     npm install
+
+    A config.yml file is required; see sample config.yml.dist.
 
 ##Usage
 
-    Usage: ./mqtt-knx.js -b <broker-url> -h <eibd host> -p <eibd port>
-
-    Options:
-      -e, --eibd      eibd hostname             [required]
-      -p, --eibdport  eibd port                 [default: "6720"]
-      -m, --mqtt      mqtt url                  [default: "mqtt://localhost"]
-      -t, --topic     mqtt topic prefix         [default: "knx"]
-      -r, --retain    publish with retain flag
-
+    Usage: ./mqtt-knx.js
 
 ##Example
 
 Send DPT1 as true/false, DPT5 as 0..100% and DPT9 values to a mqtt broker. The topic is like 'knx/1/1/111'
 
-    ./mqtt-knx.js -e smarthome -m mqtt://localhost
+    ./mqtt-knx.js
 
 Subscribe all knx messages:
 
