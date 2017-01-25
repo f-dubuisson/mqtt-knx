@@ -19,7 +19,7 @@ var groupAddresses = [];
 
 var fs = require('fs')
 console.log('Loading group addresses');
-fs.readFile(__dirname + '/groupaddresses.xml', 'utf8', function (err,data) {
+fs.readFile(__dirname + '/conf/groupaddresses.xml', 'utf8', function (err,data) {
     if (err) {
         return console.log(err);
     }
@@ -71,7 +71,7 @@ var gaLookupByName = function(name) {
 
 
 console.log('loading config');
-var config = yaml_config.load(__dirname + '/config.yml');
+var config = yaml_config.load(__dirname + '/conf/config.yml');
 var host = config.eibdHost;
 var port = config.eibdPort;
 

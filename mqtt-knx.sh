@@ -1,1 +1,0 @@
-/home/pi/mqtt-knx/bin/mqtt-knx.sh
