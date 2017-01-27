@@ -26,3 +26,9 @@ Switch lamp on/off with a publish to the broker:
 
     mosquitto_pub -h mac-server.local -t 'knx/1/1/111/set' -m 'true'
     mosquitto_pub -h mac-server.local -t 'knx/1/1/111/set' -m 'false'
+    
+## TODO
+- allow topic patterns to be defined in config file
+- handle MQTT connection errors
+- reconnect to MQTT after connection loss
+
