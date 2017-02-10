@@ -9,60 +9,23 @@ if (typeof process.env.DEBUG != 'undefined' && process.env.DEBUG == 'true') {
 }
 
 var knxHandler = require('./knx-handler')();
-
 var mqtt = require('mqtt');
-var parser = require('xml2js').parseString;
+
+console.log('Loading config');
 var yaml_config = require('node-yaml-config');
-
-var nameL2;
-var nameL3;
-var groupAddresses = [];
-
-var fs = require('fs')
-console.log('Loading group addresses');
-fs.readFile(__dirname + '/../conf/groupaddresses.xml', 'utf8', function (err,data) {
-    if (err) {
-        return console.log(err);
-    }
-    console.log('parsing xml data');
-    parser(data, function (err, result) {
-        var L1 = result["KNX"]["Project"][0]["Installations"][0]["Installation"][0]["GroupAddresses"][0]["GroupRanges"][0]["GroupRange"];
-        L1.forEach(function (L2) {
-            if (typeof L2 == 'undefined') return;
-            nameL2 = L2['$'].Name;
-            L2.GroupRange.forEach(function (L3) {
-                if (typeof L3.GroupAddress == 'undefined') return;
-                nameL3 = L3['$'].Name;
-                L3.GroupAddress.forEach(function (item) {
-		    var gad = addressValueToGad(item['$'].Address);
-                    groupAddresses.push({'ga' : gad, 'name' : item['$'].Name, 'device' : nameL2, 'type' : nameL3});
-                    console.log("Adding item: ", item['$'].Name, gad);
-                });
-            });
-        });
-    });
-    console.log('parsing done');
-});
-
-function addressValueToGad(value) {
-  var A = Math.floor(value / 2048);
-  var B = Math.floor((value % 2048) / 256);
-  var C = (value % 256);
-
-  return A + '/' + B + '/' + C;
-}
-
-console.log('loading config');
 var config = yaml_config.load(__dirname + '/../conf/config.yml');
 var host = config.eibdHost;
 var port = config.eibdPort;
 
+console.log('Loading group addresses');
+var knxProjectLoader = require('./knx-project-loader')();
+var groupAddresses = knxProjectLoader.load(__dirname + '/../conf/groupaddresses.xml');
 
-console.log('connecting to mqtt')
+console.log('Connecting to MQTT')
 var mqttClient = mqtt.connect(config.mqttHost);
-
+console.log('Connecting to KNX')
 knxHandler.connect(host, port, groupAddresses, mqttClient);
-console.log('bootstrap done');
+console.log('Ready');
 
 mqttClient.subscribe('/knx/+/+/+/set');
 

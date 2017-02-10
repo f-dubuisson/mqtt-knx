@@ -20,9 +20,7 @@ KnxHandler.prototype.connect = function(host, port, groupAddresses, mqttHandler)
   var handler = this;
   this.eibdConn.socketRemote(this.eibdOpts, function(err) {
     if (err) {
-      console.log("Error");
-      console.log(err);
-      return;
+      throw new Error(`Error connecting to KNX server: ${err}`);
     }
 
     handler.eibdConn.openGroupSocket(0, function(messageparser) {
@@ -39,13 +37,14 @@ KnxHandler.prototype.onNewMessage = function(src, dest, type, val) {
   var value = knxHelper.getDPTValue(val, type);
   if (value) {
     var gaItem = knxHelper.gaLookup(dest, this.groupAddresses);
-//		if (DEBUG) console.log("gaItem: ", gaItem);
+		if (DEBUG) console.log("gaItem: ", gaItem);
     if (typeof gaItem == 'undefined') return;
 
-    var topic = '/knx/' + gaItem.device + '/' + gaItem.type + '/' + gaItem.name + '/get';
+    //var topic = '/knx/' + gaItem.device + '/' + gaItem.type + '/' + gaItem.name + '/get';
+    var topic = `/knx/${gaItem.device}/${gaItem.type}/${gaItem.name}/get`;
     gaItem.value = value;
 //    message = JSON.stringify(gaItem);
-    if (DEBUG) console.log("publish: ", topic, gaItem.value);
+    if (DEBUG) console.log(`publish on ${topic}: ${gaItem.value}`);
     this.mqttHandler.publish(topic, gaItem.value, { "retain": false, "qos": 2 });
   }
 }
