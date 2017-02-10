@@ -21,8 +21,8 @@ KnxProjectLoader.prototype.load = function(filename) {
           nameL3 = L3['$'].Name;
           L3.GroupAddress.forEach(function (item) {
   		      var gad = addressValueToGad(item['$'].Address);
-            groupAddresses.add(gad, item['$'].Name, nameL2, nameL3);
-            //console.log("Adding item: ", item['$'].Name, gad);
+            groupAddresses.add(gad, item['$'].Name, nameL2, nameL3});
+            console.log("Adding item: ", item['$'].Name, gad);
           });
         });
       });

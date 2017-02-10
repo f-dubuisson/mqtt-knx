@@ -19,20 +19,4 @@ var self = module.exports = {
         return undefined;
     }
   },
-
-  gaLookup : function(ga, groupAddresses) {
-    return groupAddresses.filter(
-      function (element, index) {
-        if (element.ga != ga) return false;
-        return true;
-      }).pop();
-  },
-
-  gaLookupByName : function(name, groupAddresses) {
-    return groupAddresses.filter(
-      function (element, index) {
-        if (element.name != name) return false;
-        return true;
-      }).pop();
-  }
 }

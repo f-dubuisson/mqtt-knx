@@ -4,15 +4,14 @@ function KnxHandler() {
   DEBUG = true;
 }
 
-KnxHandler.prototype.connect = function(host, port, groupAddresses, mqttHandler) {
-  console.log('Connecting to eibd: ' + host + ':' + port);
+KnxHandler.prototype.connect = function(host, port, gaDictionary, mqttHandler) {
   this.eibd = require('eibd');
   this.eibdConn = this.eibd.Connection();
   this.eibdOpts = {
     host: host,
     port: port
   };
-  this.groupAddresses = groupAddresses;
+  this.gaDictionary = gaDictionary;
   this.mqttHandler = mqttHandler;
 
   this.block = false;
@@ -29,14 +28,13 @@ KnxHandler.prototype.connect = function(host, port, groupAddresses, mqttHandler)
       });
     });
   });
-  console.log('Connected to eibd');
 }
 
 KnxHandler.prototype.onNewMessage = function(src, dest, type, val) {
   if (DEBUG) console.log("msg: ", src, dest, type, val);
   var value = knxHelper.getDPTValue(val, type);
   if (value) {
-    var gaItem = knxHelper.gaLookup(dest, this.groupAddresses);
+    var gaItem = this.gaDictionary.gaLookup(dest);
 		if (DEBUG) console.log("gaItem: ", gaItem);
     if (typeof gaItem == 'undefined') return;
 
@@ -50,14 +48,15 @@ KnxHandler.prototype.onNewMessage = function(src, dest, type, val) {
 }
 
 KnxHandler.prototype.groupWrite = function(gad, messageAction, DPTType, value) {
+  var handler = this;
   var synchronous = function() {
 	  setTimeout(function(){
-      if (this.block){
+      if (handler.block){
         synchronous();
       }
       else {
-        this.block = true;
-        groupWriteDo(gad, messageAction, DPTType, value);
+        handler.block = true;
+        handler.groupWriteDo(gad, messageAction, DPTType, value);
       }
     }, 50);
   };
@@ -77,11 +76,12 @@ KnxHandler.prototype.groupWriteDo = function(gad, messageAction, DPTType, value)
     console.log('groupWrite', gad, messageAction, DPTType, value);
   var address = this.eibd.str2addr(gad);
 
-  this.eibdConn.socketRemote(eibdOpts, function () {
-    this.eibdConn.openTGroup(address, 1, function (err) {
-      var msg = this.eibd.createMessage(messageAction, DPTType, value);
-      this.eibdConn.sendAPDU(msg, function (err) {
-        this.block = false;
+  var handler = this;
+  this.eibdConn.socketRemote(this.eibdOpts, function () {
+    handler.eibdConn.openTGroup(address, 1, function (err) {
+      var msg = handler.eibd.createMessage(messageAction, DPTType, value);
+      handler.eibdConn.sendAPDU(msg, function (err) {
+        handler.block = false;
         if (err) {
           console.error('Error:', err);
         }
@@ -95,11 +95,12 @@ KnxHandler.prototype.groupRead = function(gad) {
     console.log('groupRead', gad);
   var address = this.eibd.str2addr(gad);
 
+  var handler = this;
   this.eibdConn.socketRemote(eibdOpts, function () {
-    this.eibdConn.openTGroup(address, 1, function (err) {
-      var msg = this.eibd.createMessage('read');
-      this.eibdConn.sendAPDU(msg, function (err) {
-        this.block = false;
+    handler.eibdConn.openTGroup(address, 1, function (err) {
+      var msg = handler.eibd.createMessage('read');
+      handler.eibdConn.sendAPDU(msg, function (err) {
+        handler.block = false;
         if (err) {
           console.error('Error:', err);
         }
