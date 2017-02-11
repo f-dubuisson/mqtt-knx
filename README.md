@@ -10,7 +10,13 @@ A config.yml file and groupaddresses.xml file are required. groupaddresses.xml f
 
 ##Usage
 
-    Usage: ./mqtt-knx.js
+    Usage: 
+    - npm start
+    or
+    - docker run -v /home/pi/mqtt-knx:/data --link mosquitto:mosquitto -it hypriot/rpi-node /bin/bash -c "cd data && npm start"
+    or
+    - docker build -t fdubuisson/mqtt-knx .
+    - docker run --link mosquitto:mosquitto -v conf:/conf -it fdubuisson/mqtt-knx
 
 ##Example
 
