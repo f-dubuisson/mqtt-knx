@@ -38,7 +38,6 @@ KnxHandler.prototype.onNewMessage = function(src, dest, type, val) {
 		if (DEBUG) console.log("gaItem: ", gaItem);
     if (typeof gaItem == 'undefined') return;
 
-    //var topic = '/knx/' + gaItem.device + '/' + gaItem.type + '/' + gaItem.name + '/get';
     var topic = `/knx/${gaItem.device}/${gaItem.type}/${gaItem.name}/get`;
     gaItem.value = value;
 //    message = JSON.stringify(gaItem);

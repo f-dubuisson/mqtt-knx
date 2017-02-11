@@ -8,7 +8,6 @@ MqttHandler.prototype.connect = function(host, inputPattern, outputPattern, gaDi
   this.mqttClient = mqtt.connect(host);
   this.gaDictionary = gaDictionary;
   this.knxHandler = knxHandler;
-  console.log(this.groupAddresses);
 
   var handler = this;
   this.mqttClient.on('message', function(topic, message) {
