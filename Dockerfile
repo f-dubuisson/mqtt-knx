@@ -1,15 +1,13 @@
-FROM resin/rpi-raspbian:jessie
-
-RUN  apt-get update \
-   && apt-get -y install npm
+FROM hypriot/rpi-node
 
 VOLUME conf
 
-COPY mqtt-knx.js package.json README.md LICENSE /
+ADD package.json README.md LICENSE /data/
+ADD src /data/src/
+
+WORKDIR /data
 
 RUN npm install
 
-COPY entrypoint.sh /entrypoint.sh
-ENTRYPOINT ["/entrypoint.sh"]
-CMD ["./mqtt-knx.js"]
+CMD ["npm", "start"]
 
