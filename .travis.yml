@@ -9,4 +9,9 @@ script:
 - docker build -t fdubuisson/mqtt-knx .
 # test image
 - docker run fdubuisson/mqtt-knx npm --version
-
+# push image
+- >
+  if [ "$TRAVIS_BRANCH" == "master" ] && [ "$TRAVIS_PULL_REQUEST" == "false" ]; then
+    docker login -u="$DOCKER_USER" -p="$DOCKER_PASS"
+    docker push fdubuisson/mqtt-knx
+  fi
