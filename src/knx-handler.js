@@ -31,18 +31,20 @@ KnxHandler.prototype.connect = function(host, port, gaDictionary, mqttHandler) {
 }
 
 KnxHandler.prototype.onNewMessage = function(src, dest, type, val) {
-  if (DEBUG) console.log("msg: ", src, dest, type, val);
+  if (DEBUG) console.log(`New knx message: ${src}, ${dest}, ${type}, ${val}`);
   var value = knxHelper.getDPTValue(val, type);
   if (value) {
     var gaItem = this.gaDictionary.gaLookup(dest);
-		if (DEBUG) console.log("gaItem: ", gaItem);
     if (typeof gaItem == 'undefined') return;
 
     var topic = `/knx/${gaItem.device}/${gaItem.type}/${gaItem.name}/get`;
     gaItem.value = value;
-//    message = JSON.stringify(gaItem);
-    if (DEBUG) console.log(`publish on ${topic}: ${gaItem.value}`);
-    this.mqttHandler.publish(topic, gaItem.value, { "retain": false, "qos": 2 });
+    if (DEBUG) console.log(`Publish on ${topic}: ${gaItem.value}`);
+    this.mqttHandler.publish(topic, gaItem.value, { "retain": false, "qos": 0 }, function(err) {
+      if (err) {
+        console.log(`Publish failed on ${topic}: ${err}`);
+      }
+    });
   }
 }
 

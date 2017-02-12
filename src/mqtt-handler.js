@@ -61,8 +61,8 @@ MqttHandler.prototype.onNewMessage = function(topic, message) {
   }
 }
 
-MqttHandler.prototype.publish = function(topic, value, opts) {
-  this.mqttClient.publish(topic, value, opts);
+MqttHandler.prototype.publish = function(topic, value, opts, callback) {
+  this.mqttClient.publish(topic, value, opts, callback);
 }
 
 
