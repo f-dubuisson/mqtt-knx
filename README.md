@@ -1,4 +1,4 @@
-# mqtt-knx
+# mqtt-knx [![Build Status](https://travis-ci.org/f-dubuisson/mqtt-knx.png)](https://travis-ci.org/f-dubuisson/mqtt-knx)
 
 KNX to MQTT Bridge.
 
