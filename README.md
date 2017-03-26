@@ -27,3 +27,4 @@ Switch lamp on/off with a publish to the broker:
     
 ## TODO
 - allow topic patterns to be defined in config file
+- try to reconnect to KNX if connection breaks
