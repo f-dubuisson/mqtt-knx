@@ -6,7 +6,6 @@ function KnxHandler() {
 
 KnxHandler.prototype.connect = function(host, port, gaDictionary, mqttHandler) {
   this.eibd = require('eibd');
-  this.eibdConn = this.eibd.Connection();
   this.eibdOpts = {
     host: host,
     port: port
@@ -15,18 +14,29 @@ KnxHandler.prototype.connect = function(host, port, gaDictionary, mqttHandler) {
   this.mqttHandler = mqttHandler;
 
   this.block = false;
+  this.openConnection();
+}
 
+KnxHandler.prototype.openConnection = function() {
   var handler = this;
+  this.eibdConn = this.eibd.Connection();
   this.eibdConn.socketRemote(this.eibdOpts, function(err) {
     if (err) {
-      throw new Error(`Error connecting to KNX server: ${err}`);
+      console.log(`Error connecting to KNX server: ${err}`);
+      return;
     }
+    console.log('Connected');
 
     handler.eibdConn.openGroupSocket(0, function(messageparser) {
       messageparser.on('write', function(src, dest, type, val) {
         handler.onNewMessage(src, dest, type, val);
       });
     });
+  });
+  this.eibdConn.on('close', function () {
+    //restart...
+    console.log('Lost connection; reconnecting...');
+    setTimeout(function () { handler.openConnection(); }, 1000);
   });
 }
 
